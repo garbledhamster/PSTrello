@@ -95,8 +95,7 @@ Function Set-TrelloAccount
     {
         Write-Host("$Name was not found as an available account. Use Add-TrelloAccount to add your account") -ForegroundColor Red
     }
-
-
+}
 
 
 ###############
@@ -156,6 +155,40 @@ Function Get-TrelloList
     { return (invoke-restmethod -uri "$BaseUri/boards/$($Board.id)/lists?$($TrelloAccount.String)") }
 
     return ((invoke-restmethod -uri "$BaseUri/boards/$($Board.id)/lists?$($TrelloAccount.String)") | ? {$_.name -eq "$Name"} | select -Index $Index)
+}
+
+Function Remove-TrelloList
+{
+    param (
+        [Parameter(Mandatory=$true,ValueFromPipeline)]
+        [object]$List
+    )
+
+    $body = @{
+        closed=$true
+    } | ConvertTo-Json
+
+    return (invoke-restmethod -uri "$BaseUri/lists/$($list.id)?$($TrelloAccount.String)" -Body $body  -Method Put -ContentType 'application/json')
+
+}
+
+Function New-TrelloList {
+    param (
+        [Parameter(Mandatory,ValueFromPipeline)]
+        [object]$Board,
+        [Parameter(Mandatory)]
+        [object]$Name,
+        [ValidateSet("top","bottom")]
+        [object]$Position
+    )
+
+    $body = @{
+        name=$Name
+        pos=$Position
+    } | ConvertTo-Json
+
+    return (invoke-restmethod -uri "$BaseUri/boards/$($board.id)/lists?$($TrelloAccount.String)" -Body $body  -Method Post -ContentType 'application/json')
+
 }
 
 ###############
@@ -291,6 +324,7 @@ function Add-TrelloCardAttachment
 	}
 }
 
+
 ###############
 ### LABELS
 ###############
@@ -351,5 +385,4 @@ function Remove-TrelloLabel
 
             }
         }
-
 }
