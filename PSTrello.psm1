@@ -239,15 +239,15 @@ Function New-TrelloCard
         [Parameter(ParameterSetName='JsonObject',Mandatory=$true)]
         $JsonObject,
 
-        [Parameter(ParameterSetName='Name',Mandatory=$true,ValueFromPipeline)]
+        [Parameter(ParameterSetName='Name',Mandatory,ValueFromPipeline)]
         [object]$List,
-        [Parameter(ParameterSetName='Name',Mandatory=$true)]
+        [Parameter(ParameterSetName='Name',Mandatory)]
         [string]$Name,
-        [Parameter(ParameterSetName='Name',Mandatory=$false)]
+        [Parameter(ParameterSetName='Name')]
         [string]$Description,
-        [Parameter(ParameterSetName='Name',Mandatory=$false)]
+        [Parameter(ParameterSetName='Name')]
         [string]$Labels,
-        [Parameter(ParameterSetName='Name',Mandatory=$false)]
+        [Parameter(ParameterSetName='Name')]
         [string]$Position
     )
 
@@ -331,19 +331,29 @@ function Add-TrelloCardAttachment
 
 function Get-TrelloLabel
 {
+    [cmdletbinding(DefaultParameterSetName="All")]
     param (
-        [Parameter(Mandatory=$true,ValueFromPipeline)]
+        [Parameter(Mandatory,ValueFromPipeline)]
         [object]$Board,
-        [Parameter(Mandatory=$false)]
+        [int]$Limit=100,
         [object]$Fields="all",
-        [Parameter(Mandatory=$false)]
-        [int]$Limit=100
 
-
+        [Parameter(ParameterSetName='Name')]
+        [string]$Name="*",
+        [Parameter(ParameterSetName='Name')]
+        [string]$Color="*",
+        
+        [Parameter(ParameterSetName='All')]
+        [switch]$All
     )
 
-    try { return (invoke-restmethod -uri "$BaseUri/boards/$($Board.id)/labels?fields=$Fields&limit=$Limit&$($TrelloAccount.String)") }
-    catch { return null }
+    $color = $Color.Replace('null','')
+
+    try {
+        $labels = (invoke-restmethod -uri "$BaseUri/boards/$($Board.id)/labels?fields=$Fields&limit=$Limit&$($TrelloAccount.String)")
+        if ($PSCmdlet.ParameterSetName -eq "All") {return $labels}
+        else {return ($labels | where {$_.name -like $Name -and $_.color -like $color.ToLower()})}
+    } catch {return $null}
 }
 
 function New-TrelloLabel
@@ -357,32 +367,37 @@ function New-TrelloLabel
         [string]$Color
     )
 
-    try { return (invoke-restmethod -uri "$BaseUri/boards/$($Board.id)/labels?name=$name&color=$color&$($TrelloAccount.String)" -Method Post) }
-    catch { return null }
+    $label = ($board | Get-TrelloLabel -Name $name -Color $color)
+    if ($label -eq $null)
+    {
+        try { return (invoke-restmethod -uri "$BaseUri/boards/$($Board.id)/labels?name=$name&color=$color&$($TrelloAccount.String)" -Method Post) }
+        catch { Write-Error $_.Exception.Message }
+    }
+    else {$label}
 }
 
 function Remove-TrelloLabel
 {
-        param (
-            [Parameter(Mandatory)]
-            [ValidateSet("Board","Card")]
-            [string[]]$RemoveFrom,
-            [Parameter(Mandatory,ValueFromPipeline)]
-            [object]$Object
-        )
+    param (
+        [Parameter(Mandatory)]
+        [ValidateSet("Board","Card")]
+        [string[]]$RemoveFrom,
+        [Parameter(Mandatory,ValueFromPipeline)]
+        [object]$Object
+    )
 
-        if ($ObjectType -eq "Board")
+    if ($ObjectType -eq "Board")
+    {
+        try { return (invoke-restmethod -uri "$BaseUri/labels/$($Label.id)?$($TrelloAccount.String)" -Method Delete) }
+        catch { return null }
+    }
+
+    if ($ObjectType -eq "Card")
+    {
+        foreach ($label in $card.labels)
         {
-            try { return (invoke-restmethod -uri "$BaseUri/labels/$($Label.id)?$($TrelloAccount.String)" -Method Delete) }
-            catch { return null }
-        }
+            $label
 
-        if ($ObjectType -eq "Card")
-        {
-            foreach ($label in $card.labels)
-            {
-                $label
-
-            }
         }
+    }
 }
