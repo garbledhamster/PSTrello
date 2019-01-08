@@ -379,25 +379,12 @@ function New-TrelloLabel
 function Remove-TrelloLabel
 {
     param (
-        [Parameter(Mandatory)]
-        [ValidateSet("Board","Card")]
-        [string[]]$RemoveFrom,
+        #[Parameter(Mandatory)]
+        #[ValidateSet("Board","Card")]
+        #[string[]]$RemoveFrom,
         [Parameter(Mandatory,ValueFromPipeline)]
-        [object]$Object
+        [object]$Label
     )
 
-    if ($ObjectType -eq "Board")
-    {
-        try { return (invoke-restmethod -uri "$BaseUri/labels/$($Label.id)?$($TrelloAccount.String)" -Method Delete) }
-        catch { return null }
-    }
-
-    if ($ObjectType -eq "Card")
-    {
-        foreach ($label in $card.labels)
-        {
-            $label
-
-        }
-    }
+     return (invoke-restmethod -uri "$BaseUri/labels/$($Label.id)?$($TrelloAccount.String)" -Method Delete)
 }
